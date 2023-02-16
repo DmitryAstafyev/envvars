@@ -1,5 +1,4 @@
-use crate::{extractor::Extractor, profiles::Profile};
-use log;
+use crate::{ profiles::Profile};
 use std::{
     fs::read_to_string,
     io::{Error, ErrorKind},
@@ -8,7 +7,7 @@ use std::{
 
 const SHELLS_FILE_PATH: &str = "/etc/shells";
 
-pub(crate) fn get(extractor: &Extractor) -> Result<Vec<Profile>, Error> {
+pub(crate) fn get() -> Result<Vec<Profile>, Error> {
     let shells_file_path = Path::new(SHELLS_FILE_PATH);
     if !shells_file_path.exists() {
         return Err(Error::new(
@@ -19,7 +18,7 @@ pub(crate) fn get(extractor: &Extractor) -> Result<Vec<Profile>, Error> {
     let mut profiles: Vec<Profile> = vec![];
     for shell in read_to_string(shells_file_path)?.split('\n') {
         let path = Path::new(shell);
-        let profile = match Profile::new(&path.to_path_buf(), Some(extractor)) {
+        let profile = match Profile::new(&path.to_path_buf(), vec!["-c"]) {
             Ok(profile) => profile,
             Err(err) => {
                 log::warn!("Cannot get envvars for {shell}: {err}");
@@ -31,10 +30,3 @@ pub(crate) fn get(extractor: &Extractor) -> Result<Vec<Profile>, Error> {
     Ok(profiles)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_it() {}
-}

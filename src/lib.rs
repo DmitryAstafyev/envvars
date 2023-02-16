@@ -1,10 +1,16 @@
+#[macro_use]
+extern crate lazy_static;
+use std::{collections::HashMap, io::Error};
 mod extractor;
 mod profiles;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+use extractor::Extractor;
+pub use profiles::{get as get_profiles, Profile};
 
-    #[test]
-    fn test_it() {}
+lazy_static! {
+    pub static ref EXTRACTOR: Extractor = Extractor::new();
+}
+
+pub fn get_context_envvars() -> Result<HashMap<String, String>, Error> {
+    EXTRACTOR.get(None, &Vec::new())
 }
