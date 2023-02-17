@@ -89,15 +89,13 @@ impl Profile {
 }
 
 /// Returns all detected shell's profiles.
-/// Unix based systems:
-/// - reads /etc/shells and creates Profile for each found shell
-/// Windows:
-/// - checks most regulars shells like CMD, PowerShell, GitBash, Cygwin etc.
+/// - Unix based systems: reads /etc/shells and creates Profile for each found shell
+/// - Windows: checks most regulars shells like CMD, PowerShell, GitBash, Cygwin etc.
 ///
 /// Because an operation of extracting of environment variables could take some time,
 /// by default `Profile.envvars` is empty (None). To load data should be used method
 /// `Profile.load`, which will make attempt to detect environment variables.
-/// 
+///
 /// # Examples
 ///
 /// ```
