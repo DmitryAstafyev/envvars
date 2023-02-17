@@ -3,6 +3,7 @@ use home::home_dir;
 use std::{collections::HashMap, env, path::PathBuf, str::FromStr};
 
 const WINDIR: &str = "windir";
+const SYSTEM_ROOT: &str = "SystemRoot";
 const PROCESSOR_ARCHITEW6432: &str = "PROCESSOR_ARCHITEW6432";
 const HOMEDRIVE: &str = "HOMEDRIVE";
 
@@ -52,6 +53,31 @@ pub(crate) fn get() -> Result<Vec<Profile>, Error> {
         format!("{windir}\\System32")
     };
     let mut profiles: Vec<Profile> = vec![];
+    if let Some(sys_root) = envvars.get(SYSTEM_ROOT) {
+        let system_path = if envvars.contains_key(PROCESSOR_ARCHITEW6432) {
+            format!("{sys_root}\\Sysnative")
+        } else {
+            format!("{sys_root}\\System32")
+        };
+        // WSL (build > 16299)
+        add_profile(
+            &mut profiles,
+            "WSL",
+            get_path_buf(&format!(
+                "{system_path}\\wsl.exe"
+            ))?,
+            vec!["-c"],
+        );
+        // WSL Bash (build < 16299)
+        add_profile(
+            &mut profiles,
+            "WSL (bash)",
+            get_path_buf(&format!(
+                "{system_path}\\bash.exe"
+            ))?,
+            vec!["-c"],
+        );
+    }
     // Windows PowerShell
     add_profile(
         &mut profiles,
