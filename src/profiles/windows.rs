@@ -5,7 +5,6 @@ use std::{collections::HashMap, env, path::PathBuf, str::FromStr};
 const WINDIR: &str = "windir";
 const PROCESSOR_ARCHITEW6432: &str = "PROCESSOR_ARCHITEW6432";
 const HOMEDRIVE: &str = "HOMEDRIVE";
-const LOCALAPPDATA: &str = "LOCALAPPDATA";
 
 fn get_envvars() -> HashMap<String, String> {
     let envvars = match EXTRACTOR.get(None, &Vec::new()) {

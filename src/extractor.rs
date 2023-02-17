@@ -76,7 +76,7 @@ impl Extractor {
         Ok(())
     }
 
-    fn output(&self, shell: Option<&PathBuf>, args: &Vec<String>) -> Result<Output, io::Error> {
+    fn output(&self, shell: Option<&PathBuf>, args: &[String]) -> Result<Output, io::Error> {
         if cfg!(windows) {
             if let Some(shell) = shell {
                 Command::new(shell)
@@ -112,7 +112,7 @@ impl Extractor {
     pub fn get(
         &self,
         shell: Option<&PathBuf>,
-        args: &Vec<String>,
+        args: &[String],
     ) -> Result<HashMap<String, String>, Error> {
         self.delivery().map_err(Error::Create)?;
         let output = self.output(shell, args).map_err(Error::Executing)?;
@@ -123,38 +123,50 @@ impl Extractor {
     }
 }
 
+impl Default for Extractor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::profiles::get as get_profiles;
+    use crate::{profiles::get as get_profiles, Profile};
 
     #[test]
     fn test() {
         let mut profiles = get_profiles().unwrap();
+        let mut failed: Vec<(Profile, Error)> = vec![];
+        println!("{}", "=".repeat(50));
+        println!("Found shells with detected envvars:");
+        println!("{}", "=".repeat(50));
         profiles.iter_mut().for_each(|p| {
             if let Err(err) = p.load() {
-                match err {
-                    Error::Parsing(_err, _stdout, stderr) => {
-                        println!(
-                            "{}: {:?}; fail to get envvars; stderr: {stderr}",
-                            p.name, p.path,
-                        );
+                failed.push((p.clone(), err));
+            } else {
+                println!(
+                    "{}: {:?}; (detected variables: {})",
+                    p.name,
+                    p.path,
+                    if let Some(envvars) = p.envvars.as_ref() {
+                        envvars.len()
+                    } else {
+                        0
                     }
-                    _ => {
-                        println!("{}: {:?}; fail to get envvars: {err}", p.name, p.path,);
-                    }
-                }
+                );
             }
-            println!(
-                "{}: {:?}; (envvars: {})",
-                p.name,
-                p.path,
-                if let Some(envvars) = p.envvars.as_ref() {
-                    envvars.len()
-                } else {
-                    0
-                }
-            );
+        });
+        println!("{}", "=".repeat(50));
+        println!("Found shells with failed detection of envvars:");
+        println!("{}", "=".repeat(50));
+        failed.iter().for_each(|(p, err)| match err {
+            Error::Parsing(_err, _stdout, stderr) => {
+                println!("{}: {:?}; error:\n{stderr}", p.name, p.path,);
+            }
+            _ => {
+                println!("{}: {:?}; fail to get envvars: {err}", p.name, p.path,);
+            }
         });
     }
 }
