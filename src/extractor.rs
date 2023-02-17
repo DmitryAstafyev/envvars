@@ -1,9 +1,10 @@
-use crate::EXTRACTOR;
+use crate::Error;
 use std::{
     collections::HashMap,
     env::temp_dir,
     fs::{File, OpenOptions},
-    io::{Error, ErrorKind, Write},
+    io,
+    io::Write,
     path::{Path, PathBuf},
     process::{Command, Output},
     str::from_utf8,
@@ -46,7 +47,7 @@ impl Extractor {
     }
 
     #[cfg(not(windows))]
-    fn create_file(&self) -> Result<File, Error> {
+    fn create_file(&self) -> Result<File, io::Error> {
         OpenOptions::new()
             .mode(0o777)
             .read(true)
@@ -55,7 +56,7 @@ impl Extractor {
             .open(&self.location)
     }
     #[cfg(windows)]
-    fn create_file(&self) -> Result<File, Error> {
+    fn create_file(&self) -> Result<File, io::Error> {
         OpenOptions::new()
             .read(true)
             .write(true)
@@ -63,7 +64,7 @@ impl Extractor {
             .open(&self.location)
     }
 
-    fn delivery(&self) -> Result<(), Error> {
+    fn delivery(&self) -> Result<(), io::Error> {
         if self.location.exists() {
             log::warn!("Extractor {:?} already exists", self.location);
             return Ok(());
@@ -75,14 +76,9 @@ impl Extractor {
         Ok(())
     }
 
-    fn output(&self, shell: Option<&PathBuf>, args: &Vec<String>) -> Result<Output, Error> {
+    fn output(&self, shell: Option<&PathBuf>, args: &Vec<String>) -> Result<Output, io::Error> {
         if cfg!(windows) {
             if let Some(shell) = shell {
-                let location_str = self
-                    .location
-                    .to_string_lossy()
-                    .to_string()
-                    .replace("\\", "\\\\");
                 Command::new(shell)
                     .args(args.iter())
                     .arg(
@@ -90,7 +86,7 @@ impl Extractor {
                             .location
                             .to_string_lossy()
                             .to_string()
-                            .replace("\\", "\\\\"),
+                            .replace('\\', "\\\\"),
                     )
                     .output()
             } else {
@@ -98,13 +94,16 @@ impl Extractor {
             }
         } else if cfg!(unix) {
             if let Some(shell) = shell {
-                Command::new(shell).arg("-c").arg(&self.location).output()
+                Command::new(shell)
+                    .args(args.iter())
+                    .arg(&self.location)
+                    .output()
             } else {
                 Command::new(&self.location).output()
             }
         } else {
-            Err(Error::new(
-                ErrorKind::Other,
+            Err(io::Error::new(
+                io::ErrorKind::Other,
                 "Current platform isn't supported",
             ))
         }
@@ -115,31 +114,18 @@ impl Extractor {
         shell: Option<&PathBuf>,
         args: &Vec<String>,
     ) -> Result<HashMap<String, String>, Error> {
-        self.delivery()?;
-        let output = self.output(shell, args)?;
-        let stdout = from_utf8(&output.stdout).map_err(|e| {
-            Error::new(
-                ErrorKind::Other,
-                format!("Fail to parse stdout to UTF8: {e}"),
-            )
-        })?;
-        let stderr = from_utf8(&output.stderr).map_err(|e| {
-            Error::new(
-                ErrorKind::Other,
-                format!("Fail to parse stderr to UTF8: {e}"),
-            )
-        })?;
-        serde_json::from_str::<HashMap<String, String>>(stdout).map_err(|e| {
-            Error::new(
-                ErrorKind::Other,
-                format!("Fail convert stdout into JSON: {e}"),
-            )
-        })
+        self.delivery().map_err(Error::Create)?;
+        let output = self.output(shell, args).map_err(Error::Executing)?;
+        let stdout = from_utf8(&output.stdout).map_err(Error::Decoding)?;
+        let stderr = from_utf8(&output.stderr).map_err(Error::Decoding)?;
+        serde_json::from_str::<HashMap<String, String>>(stdout)
+            .map_err(|e| Error::Parsing(e, stdout.to_owned(), stderr.to_owned()))
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::profiles::get as get_profiles;
 
     #[test]
@@ -147,11 +133,17 @@ mod tests {
         let mut profiles = get_profiles().unwrap();
         profiles.iter_mut().for_each(|p| {
             if let Err(err) = p.load() {
-                println!(
-                    "{}: {:?}; fail to get envvars: {err}",
-                    p.name,
-                    p.path,
-                );
+                match err {
+                    Error::Parsing(_err, _stdout, stderr) => {
+                        println!(
+                            "{}: {:?}; fail to get envvars; stderr: {stderr}",
+                            p.name, p.path,
+                        );
+                    }
+                    _ => {
+                        println!("{}: {:?}; fail to get envvars: {err}", p.name, p.path,);
+                    }
+                }
             }
             println!(
                 "{}: {:?}; (envvars: {})",

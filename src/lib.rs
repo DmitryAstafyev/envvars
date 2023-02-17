@@ -1,9 +1,11 @@
 #[macro_use]
 extern crate lazy_static;
-use std::{collections::HashMap, io::Error};
+use std::collections::HashMap;
+mod error;
 mod extractor;
 mod profiles;
 
+pub use error::Error;
 use extractor::Extractor;
 pub use profiles::{get as get_profiles, Profile};
 

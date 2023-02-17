@@ -1,7 +1,6 @@
-use crate::EXTRACTOR;
+use crate::{Error, EXTRACTOR};
 use std::{
     collections::HashMap,
-    io::{Error, ErrorKind},
     path::{Path, PathBuf},
 };
 
@@ -17,27 +16,29 @@ pub struct Profile {
 }
 
 impl Profile {
-    pub fn new(shell: &PathBuf, args: Vec<&str>) -> Result<Self, Error> {
+    pub fn new(shell: &PathBuf, args: Vec<&str>, name: Option<&str>) -> Result<Self, Error> {
         let path = Path::new(shell);
         if !path.exists() {
-            return Err(Error::new(
-                ErrorKind::Other,
-                format!("File {shell:?} doesn't exist"),
-            ));
+            return Err(Error::NotFound(shell.clone()));
         }
-        let name = path
-            .file_name()
-            .ok_or(Error::new(
-                ErrorKind::Other,
-                format!("Found {shell:?}, but cannot convert path"),
-            ))?
-            .to_string_lossy()
-            .to_string();
+        let name = if let Some(name) = name {
+            name.to_string()
+        } else {
+            path.file_name()
+                .ok_or(Error::Other(format!(
+                    "Found {shell:?}, but cannot convert path"
+                )))?
+                .to_string_lossy()
+                .to_string()
+        };
         Ok(Profile {
             name,
             path: shell.clone(),
             envvars: None,
-            args: args.into_iter().map(|s| s.to_owned()).collect::<Vec<String>>(),
+            args: args
+                .into_iter()
+                .map(|s| s.to_owned())
+                .collect::<Vec<String>>(),
         })
     }
 
@@ -47,16 +48,12 @@ impl Profile {
     }
 }
 
-
 pub fn get() -> Result<Vec<Profile>, Error> {
     if cfg!(windows) {
         windows::get()
     } else if cfg!(unix) {
         unix::get()
     } else {
-        Err(Error::new(
-            ErrorKind::Other,
-            "Current platform isn't supported",
-        ))
+        Err(Error::NotSupportedPlatform)
     }
 }

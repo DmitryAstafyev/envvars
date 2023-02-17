@@ -1,13 +1,6 @@
-use crate::{profiles::Profile, EXTRACTOR};
+use crate::{profiles::Profile, Error, EXTRACTOR};
 use home::home_dir;
-use std::{
-    collections::HashMap,
-    env,
-    fs::read_to_string,
-    io::{Error, ErrorKind},
-    path::{Path, PathBuf},
-    str::FromStr,
-};
+use std::{collections::HashMap, env, path::PathBuf, str::FromStr};
 
 const WINDIR: &str = "windir";
 const PROCESSOR_ARCHITEW6432: &str = "PROCESSOR_ARCHITEW6432";
@@ -34,39 +27,26 @@ fn get_envvars() -> HashMap<String, String> {
 }
 
 fn get_path_buf(str_path: &str) -> Result<PathBuf, Error> {
-    PathBuf::from_str(str_path).map_err(|e| {
-        Error::new(
-            ErrorKind::Other,
-            format!("Fail to convert string \"{str_path}\" to path: {e}"),
-        )
-    })
+    PathBuf::from_str(str_path).map_err(Error::Infallible)
 }
 
-fn add_profile(
-    envvars: &HashMap<String, String>,
-    list: &mut Vec<Profile>,
-    name: String,
-    path: PathBuf,
-    args: Vec<&str>,
-) {
+fn add_profile(list: &mut Vec<Profile>, name: &str, path: PathBuf, args: Vec<&str>) {
     if !path.exists() {
         return;
     }
-    if let Ok(profile) = Profile::new(&path, args) {
+    if let Ok(profile) = Profile::new(&path, args, Some(name)) {
         list.push(profile);
     }
 }
 
 pub(crate) fn get() -> Result<Vec<Profile>, Error> {
     let envvars = get_envvars();
-    let windir = envvars.get(WINDIR).ok_or(Error::new(
-        ErrorKind::NotFound,
-        format!("Cannot find var \"{WINDIR}\""),
-    ))?;
-    let homedrive = envvars.get(HOMEDRIVE).ok_or(Error::new(
-        ErrorKind::NotFound,
-        format!("Cannot find var \"{WINDIR}\""),
-    ))?;
+    let windir = envvars
+        .get(WINDIR)
+        .ok_or(Error::NotFoundEnvVar(WINDIR.to_string()))?;
+    let homedrive = envvars
+        .get(HOMEDRIVE)
+        .ok_or(Error::NotFoundEnvVar(HOMEDRIVE.to_string()))?;
     let system_32_path = if envvars.contains_key(PROCESSOR_ARCHITEW6432) {
         format!("{windir}\\Sysnative")
     } else {
@@ -75,9 +55,8 @@ pub(crate) fn get() -> Result<Vec<Profile>, Error> {
     let mut profiles: Vec<Profile> = vec![];
     // Windows PowerShell
     add_profile(
-        &envvars,
         &mut profiles,
-        String::from("Windows PowerShell"),
+        "Windows PowerShell",
         get_path_buf(&format!(
             "{system_32_path}\\WindowsPowerShell\\v1.0\\powershell.exe"
         ))?,
@@ -86,9 +65,8 @@ pub(crate) fn get() -> Result<Vec<Profile>, Error> {
     if let Some(home) = home_dir() {
         // .NET Core PowerShell Global Tool
         add_profile(
-            &envvars,
             &mut profiles,
-            String::from(".NET Core PowerShell Global Tool"),
+            ".NET Core PowerShell Global Tool",
             get_path_buf(&format!(
                 "{}\\.dotnet\\tools\\pwsh.exe",
                 home.to_string_lossy()
@@ -98,49 +76,43 @@ pub(crate) fn get() -> Result<Vec<Profile>, Error> {
     }
     // Command Prompt
     add_profile(
-        &envvars,
         &mut profiles,
-        String::from("Command Prompt"),
+        "Command Prompt",
         get_path_buf(&format!("{system_32_path}\\cmd.exe"))?,
         vec![],
     );
     // Cygwin
     add_profile(
-        &envvars,
         &mut profiles,
-        String::from("Cygwin x64"),
+        "Cygwin x64",
         get_path_buf(&format!("{homedrive}\\cygwin64\\bin\\bash.exe"))?,
         vec!["--login", "-c"],
     );
     add_profile(
-        &envvars,
         &mut profiles,
-        String::from("Cygwin"),
+        "Cygwin",
         get_path_buf(&format!("{homedrive}\\cygwin\\bin\\bash.exe"))?,
         vec!["--login", "-c"],
     );
     // bash (MSYS2)
     add_profile(
-        &envvars,
         &mut profiles,
-        String::from("bash (MSYS2)"),
+        "bash (MSYS2)",
         get_path_buf(&format!("{homedrive}\\msys64\\usr\\bin\\bash.exe"))?,
         vec!["--login", "-i", "-c"],
     );
     // GitBash
-    for key in vec!["ProgramW6432", "ProgramFiles", "ProgramFiles(X86)"] {
+    for key in ["ProgramW6432", "ProgramFiles", "ProgramFiles(X86)"] {
         if let Some(v) = envvars.get(key) {
             add_profile(
-                &envvars,
                 &mut profiles,
-                String::from("GitBash"),
+                "GitBash",
                 get_path_buf(&format!("{v}\\Git\\bin\\bash.exe"))?,
                 vec!["--login", "-i", "-c"],
             );
             add_profile(
-                &envvars,
                 &mut profiles,
-                String::from("GitBash"),
+                "GitBash",
                 get_path_buf(&format!("{v}\\Git\\usr\\bin\\bash.exe"))?,
                 vec!["--login", "-i", "-c"],
             );
@@ -148,18 +120,16 @@ pub(crate) fn get() -> Result<Vec<Profile>, Error> {
     }
     if let Some(v) = envvars.get("LocalAppData") {
         add_profile(
-            &envvars,
             &mut profiles,
-            String::from("GitBash"),
+            "GitBash",
             get_path_buf(&format!("{v}\\Programs\\Git\\bin\\bash.exe"))?,
             vec!["--login", "-i", "-c"],
         );
     }
     if let Some(v) = envvars.get("UserProfile") {
         add_profile(
-            &envvars,
             &mut profiles,
-            String::from("GitBash"),
+            "GitBash",
             get_path_buf(&format!(
                 "{v}\\scoop\\apps\\git-with-openssh\\current\\bin\\bash.exe"
             ))?,
@@ -178,11 +148,7 @@ mod tests {
         let mut profiles = get().unwrap();
         profiles.iter_mut().for_each(|p| {
             if let Err(err) = p.load() {
-                println!(
-                    "{}: {:?}; fail to get envvars: {err}",
-                    p.name,
-                    p.path,
-                );
+                println!("{}: {:?}; fail to get envvars: {err}", p.name, p.path,);
             }
             println!(
                 "{}: {:?}; (envvars: {})",
