@@ -1,10 +1,11 @@
 [package]
-name = "shprofiles"
+name = "envvars"
 version = "0.1.0"
 edition = "2021"
+authors = ["d.astafyev@outlook.com"]
 
 [lib]
-name = "shprofiles"
+name = "envvars"
 path = "src/lib.rs"
 
 [dependencies]
