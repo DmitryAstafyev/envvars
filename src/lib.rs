@@ -1,7 +1,7 @@
 //! # envvars
 //!
-//! `envvars` helps to detect available a list of available shells and related
-//! environment variables. If works in two steps:
+//! `envvars` helps to detect a list of available shells and related environment
+//! variables. If works in two steps:
 //!
 //! - detecting a list of available shells and creating `Profile` for each found
 //! shell
@@ -12,7 +12,7 @@
 //! is done, `envvars` reads `stdout` and parse environment variables into
 //! `HashMap<String, String>`.
 //!
-//! As soon as extracting process could take sensitive some time (~1sec on windows
+//! As soon as extracting process could take a sensitive time (~1sec on windows
 //! and ~10ms on Unix-based OS), `envvars` doesn't extract environment variables
 //! during detecting the shell's profiles. That's the developer's decision when it
 //! should be done for the selected or each profile.
@@ -37,7 +37,7 @@
 //!
 //! ## Guaranteed results
 //! Because `envvars` tries to initialize each shell and "drop" a list of environment
-//! variables to `stdout`, the shell should support the possibility to get a command as
+//! variables to `stdout`, the shell should support the possibility to put a command as
 //! an argument, for example: `/bin/bash -c path_to_command`. Obviously not many, but
 //! still some shells don't support it (like windows command prompt). In this case, you
 //! still can use `get_context_envvars()` to get a list of environment variables without
