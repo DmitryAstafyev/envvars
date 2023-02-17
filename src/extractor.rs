@@ -14,10 +14,10 @@ use uuid::Uuid;
 #[cfg(not(windows))]
 use std::os::unix::fs::OpenOptionsExt;
 #[cfg(not(windows))]
-static EXECUTOR_BIN: &[u8] = include_bytes!("../extractor/target/debug/extractor");
+static EXECUTOR_BIN: &[u8] = include_bytes!("../extractor/target/release/extractor");
 
 #[cfg(windows)]
-static EXECUTOR_BIN: &[u8] = include_bytes!("../extractor/target/debug/extractor.exe");
+static EXECUTOR_BIN: &[u8] = include_bytes!("../extractor/target/release/extractor.exe");
 
 pub struct Extractor {
     location: PathBuf,

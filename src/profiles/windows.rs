@@ -165,6 +165,7 @@ pub(crate) fn get() -> Result<Vec<Profile>, Error> {
 }
 
 #[cfg(test)]
+#[cfg(windows)]
 mod tests {
     use super::*;
 
