@@ -74,8 +74,12 @@ impl Profile {
     /// } else {
     ///     Profile::new(&PathBuf::from_str("/bin/bash").unwrap(), vec!["-c"], None).unwrap()
     /// };
-    ///
-    /// assert_eq!(profile.name, "bash");
+    /// 
+    /// assert_eq!(profile.name, if cfg!(windows) {
+    ///     "bash.exe"
+    /// } else {
+    ///     "bash"
+    /// });
     ///
     /// profile.load().unwrap();
     ///
