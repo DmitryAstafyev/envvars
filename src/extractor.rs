@@ -22,7 +22,8 @@ static ASSET_FILENAME: &str = include_str!("../assets/filename.asset");
 
 pub struct Extractor {
     location: PathBuf,
-    checked: bool,
+    pub(crate) checked: bool,
+    pub(crate) invalid_hash: bool,
 }
 
 impl Extractor {
@@ -33,6 +34,7 @@ impl Extractor {
             #[cfg(windows)]
             location: temp_dir().join(Path::new(ASSET_FILENAME)),
             checked: false,
+            invalid_hash: false,
         }
     }
 
@@ -67,6 +69,7 @@ impl Extractor {
                         "Fail to get checksum of extractor {:?}: {err}",
                         self.location
                     );
+                    self.invalid_hash = true;
                     false
                 }
             } {
@@ -140,11 +143,10 @@ impl Default for Extractor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{profiles::get as get_profiles, Profile};
+    use crate::{profiles::get as get_profiles, Profile, EXTRACTOR};
 
-    #[test]
-    fn test() {
-        let mut profiles = get_profiles().unwrap();
+    fn extract() -> Result<(), Error> {
+        let mut profiles = get_profiles()?;
         let mut failed: Vec<(Profile, Error)> = vec![];
         println!("{}", "=".repeat(50));
         println!("Found shells with detected envvars:");
@@ -165,6 +167,7 @@ mod tests {
                 );
             }
         });
+        assert!(!profiles.is_empty());
         println!("{}", "=".repeat(50));
         println!("Found shells with failed detection of envvars:");
         println!("{}", "=".repeat(50));
@@ -176,5 +179,37 @@ mod tests {
                 println!("{}: {:?}; fail to get envvars: {err}", p.name, p.path,);
             }
         });
+        Ok(())
+    }
+    #[test]
+    fn test() {
+        // Extracting
+        extract().expect("Envvars should be extracted");
+        // Remove extractor
+        let extractor_path = temp_dir().join(Path::new(ASSET_FILENAME));
+        remove_file(&extractor_path).expect("Extractor should removed");
+        // Extracting again
+        extract().expect("Envvars should be extracted");
+        // Damage extractor
+        let mut file = OpenOptions::new()
+            .write(true)
+            .open(&extractor_path)
+            .expect("Extractor file should be opened");
+        file.write_all(&[0, 0, 0, 0, 0, 0, 0, 0, 0])
+            .expect("Data should be written into extractor");
+        file.flush().expect("Data should be flushed into extractor");
+        drop(file);
+        // Drop validation status to make extractor check itself again
+        if let Ok(mut extractor) = EXTRACTOR.lock() {
+            assert!(extractor.checked);
+            extractor.checked = false;
+        } else {
+            panic!("Fail to get access to extractor");
+        }
+        // Extracting again
+        extract().expect("Envvars should be extracted");
+        // Extractor should detect changes on executable file with invalid hash and rewrite
+        // executable file again
+        assert!(!EXTRACTOR.lock().expect("Access to extractor").invalid_hash);
     }
 }
