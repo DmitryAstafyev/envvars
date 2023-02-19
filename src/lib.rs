@@ -77,7 +77,7 @@ lazy_static! {
 ///
 /// let vars: HashMap<String, String> = get_context_envvars().unwrap();
 ///
-/// assert!(vars.contains_key("PATH"));
+/// assert!(vars.contains_key("PATH") || vars.contains_key("Path") || vars.contains_key("path"));
 /// ```
 pub fn get_context_envvars() -> Result<HashMap<String, String>, Error> {
     EXTRACTOR

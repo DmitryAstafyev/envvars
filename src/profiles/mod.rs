@@ -79,7 +79,7 @@ impl Profile {
     /// assert!(profile.envvars.is_some());
     ///
     /// if let Some(vars) = profile.envvars.as_ref() {
-    ///     assert!(vars.contains_key("PATH"));
+    ///     assert!(vars.contains_key("PATH") || vars.contains_key("Path") || vars.contains_key("path"));
     /// }
     /// ```
     pub fn load(&mut self) -> Result<(), Error> {

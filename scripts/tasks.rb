@@ -29,14 +29,14 @@ namespace :test do
   desc 'Build extractor'
   task :extractor do
     Shell.chdir(Paths::EXTRACTOR) do
-      Shell.sh 'cargo test'
+      Shell.sh 'cargo test -- --nocapture'
       Reporter.add(Jobs::Test, Owner::Extractor, 'tested', '')
     end
   end
 
   desc 'Build lib'
   task :lib do
-    Shell.sh 'cargo test'
+    Shell.sh 'cargo test -- --nocapture'
     Reporter.add(Jobs::Test, Owner::Lib, 'tested', '')
   end
 

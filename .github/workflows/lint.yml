@@ -29,6 +29,7 @@ jobs:
               run: rake clippy:envvars
     tests:
         name: Cross-platform tests
+        needs: lint
         runs-on: ${{ matrix.os }}
         strategy:
             matrix:
