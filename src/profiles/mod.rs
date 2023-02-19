@@ -83,7 +83,12 @@ impl Profile {
     /// }
     /// ```
     pub fn load(&mut self) -> Result<(), Error> {
-        self.envvars = Some(EXTRACTOR.get(Some(&self.path), &self.args)?);
+        self.envvars = Some(
+            EXTRACTOR
+                .lock()
+                .map_err(|e| Error::PoisonError(e.to_string()))?
+                .get(Some(&self.path), &self.args)?,
+        );
         Ok(())
     }
 }

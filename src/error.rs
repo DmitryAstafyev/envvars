@@ -3,6 +3,9 @@ use std::{io, path::PathBuf};
 /// Definition of shell profile
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
+    /// PoisonError error
+    #[error("PoisonError: {0:?}")]
+    PoisonError(String),
     /// IO related error
     #[error("IO Error: {0:?}")]
     Io(io::Error),

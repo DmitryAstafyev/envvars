@@ -1,48 +1,38 @@
-use crate::Error;
+use crate::{checksum::checksum, Error};
 use std::{
     collections::HashMap,
     env::temp_dir,
-    fs::{File, OpenOptions},
+    fs::{remove_file, File, OpenOptions},
     io,
     io::Write,
     path::{Path, PathBuf},
     process::{Command, Output},
     str::from_utf8,
 };
-use uuid::Uuid;
 
 #[cfg(not(windows))]
 use std::os::unix::fs::OpenOptionsExt;
 #[cfg(not(windows))]
 static EXECUTOR_BIN: &[u8] = include_bytes!("../extractor/target/release/extractor");
-
 #[cfg(windows)]
 static EXECUTOR_BIN: &[u8] = include_bytes!("../extractor/target/release/extractor.exe");
 
+static ASSET_CHECKSUM: &str = include_str!("../assets/checksum.asset");
+static ASSET_FILENAME: &str = include_str!("../assets/filename.asset");
+
 pub struct Extractor {
     location: PathBuf,
-}
-
-impl Drop for Extractor {
-    fn drop(&mut self) {
-        if self.location.exists() {
-            if let Err(err) = std::fs::remove_file(&self.location) {
-                log::error!(
-                    "Fail to remove tmp file {}; error: {err}",
-                    self.location.to_string_lossy()
-                );
-            }
-        }
-    }
+    checked: bool,
 }
 
 impl Extractor {
     pub fn new() -> Self {
         Extractor {
             #[cfg(not(windows))]
-            location: temp_dir().join(Path::new(&Uuid::new_v4().to_string())),
+            location: temp_dir().join(Path::new(ASSET_FILENAME)),
             #[cfg(windows)]
-            location: temp_dir().join(Path::new(&format!("{}.exe", Uuid::new_v4()))),
+            location: temp_dir().join(Path::new(ASSET_FILENAME)),
+            checked: false,
         }
     }
 
@@ -64,14 +54,32 @@ impl Extractor {
             .open(&self.location)
     }
 
-    fn delivery(&self) -> Result<(), io::Error> {
-        if self.location.exists() {
+    fn delivery(&mut self) -> Result<(), io::Error> {
+        if self.location.exists() && self.checked {
             log::warn!("Extractor {:?} already exists", self.location);
             return Ok(());
+        }
+        if self.location.exists() && !self.checked {
+            if !match checksum(&self.location) {
+                Ok(checksum) => checksum == ASSET_CHECKSUM,
+                Err(err) => {
+                    log::warn!(
+                        "Fail to get checksum of extractor {:?}: {err}",
+                        self.location
+                    );
+                    false
+                }
+            } {
+                remove_file(&self.location)?;
+            } else {
+                self.checked = true;
+                return Ok(());
+            }
         }
         let mut file = self.create_file()?;
         file.write_all(EXECUTOR_BIN)?;
         file.flush()?;
+        self.checked = true;
         log::debug!("File is written in: {:?}", self.location);
         Ok(())
     }
@@ -110,7 +118,7 @@ impl Extractor {
     }
 
     pub fn get(
-        &self,
+        &mut self,
         shell: Option<&PathBuf>,
         args: &[String],
     ) -> Result<HashMap<String, String>, Error> {

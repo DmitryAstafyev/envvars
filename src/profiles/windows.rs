@@ -7,8 +7,12 @@ const SYSTEM_ROOT: &str = "SystemRoot";
 const PROCESSOR_ARCHITEW6432: &str = "PROCESSOR_ARCHITEW6432";
 const HOMEDRIVE: &str = "HOMEDRIVE";
 
-fn get_envvars() -> HashMap<String, String> {
-    let envvars = match EXTRACTOR.get(None, &Vec::new()) {
+fn get_envvars() -> Result<HashMap<String, String>, Error> {
+    let envvars = match EXTRACTOR
+        .lock()
+        .map_err(|e| Error::PoisonError(e.to_string()))?
+        .get(None, &Vec::new())
+    {
         Ok(vars) => vars,
         Err(err) => {
             log::warn!("Fail to get envvars with extractor: {err}");
@@ -19,11 +23,11 @@ fn get_envvars() -> HashMap<String, String> {
     for (key, value) in env::vars() {
         proc_envvars.insert(key, value);
     }
-    if proc_envvars.len() > envvars.len() {
+    Ok(if proc_envvars.len() > envvars.len() {
         proc_envvars
     } else {
         envvars
-    }
+    })
 }
 
 fn get_path_buf(str_path: &str) -> Result<PathBuf, Error> {
@@ -40,7 +44,7 @@ fn add_profile(list: &mut Vec<Profile>, name: &str, path: PathBuf, args: Vec<&st
 }
 
 pub(crate) fn get() -> Result<Vec<Profile>, Error> {
-    let envvars = get_envvars();
+    let envvars = get_envvars()?;
     let windir = envvars
         .get(WINDIR)
         .ok_or(Error::NotFoundEnvVar(WINDIR.to_string()))?;
@@ -63,18 +67,14 @@ pub(crate) fn get() -> Result<Vec<Profile>, Error> {
         add_profile(
             &mut profiles,
             "WSL",
-            get_path_buf(&format!(
-                "{system_path}\\wsl.exe"
-            ))?,
+            get_path_buf(&format!("{system_path}\\wsl.exe"))?,
             vec!["-c"],
         );
         // WSL Bash (build < 16299)
         add_profile(
             &mut profiles,
             "WSL (bash)",
-            get_path_buf(&format!(
-                "{system_path}\\bash.exe"
-            ))?,
+            get_path_buf(&format!("{system_path}\\bash.exe"))?,
             vec!["-c"],
         );
     }

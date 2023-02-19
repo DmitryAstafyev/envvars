@@ -52,7 +52,8 @@
 
 #[macro_use]
 extern crate lazy_static;
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Mutex};
+mod checksum;
 mod error;
 mod extractor;
 mod profiles;
@@ -63,7 +64,7 @@ pub use profiles::{get as get_profiles, Profile};
 
 lazy_static! {
     #[doc(hidden)]
-    pub static ref EXTRACTOR: Extractor = Extractor::new();
+    static ref EXTRACTOR: Mutex<Extractor> = Mutex::new(Extractor::new());
 }
 
 /// Extract environment variables without shell context.
@@ -79,5 +80,8 @@ lazy_static! {
 /// assert!(vars.contains_key("PATH"));
 /// ```
 pub fn get_context_envvars() -> Result<HashMap<String, String>, Error> {
-    EXTRACTOR.get(None, &Vec::new())
+    EXTRACTOR
+        .lock()
+        .map_err(|e| Error::PoisonError(e.to_string()))?
+        .get(None, &Vec::new())
 }
