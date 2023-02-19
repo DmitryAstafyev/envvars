@@ -58,7 +58,6 @@ impl Profile {
                 .collect::<Vec<String>>(),
         })
     }
-
     /// Makes attempt to grab a list of environment variables for profile. It will
     /// spawn an instance of shell with extractor as command argument. If stdout will
     /// have suitable output, it will be parsed and list of environment variables will
@@ -70,7 +69,11 @@ impl Profile {
     /// use std::{path::PathBuf, str::FromStr};
     /// use envvars::Profile;
     ///
-    /// let mut profile: Profile = Profile::new(&PathBuf::from_str("/bin/bash").unwrap(), vec!["-c"], None).unwrap();
+    /// let mut profile: Profile = if cfg!(windows) {
+    ///     Profile::new(&PathBuf::from_str("C:\\msys64\\usr\\bin\\bash.exe").unwrap(), vec!["-c"], None).unwrap()
+    /// } else {
+    ///     Profile::new(&PathBuf::from_str("/bin/bash").unwrap(), vec!["-c"], None).unwrap()
+    /// };
     ///
     /// assert_eq!(profile.name, "bash");
     ///
