@@ -22,7 +22,7 @@ static ASSET_FILENAME: &str = include_str!("../assets/filename.asset");
 
 pub struct Extractor {
     location: PathBuf,
-    pub(crate) checked: bool,
+    /// Field is used only for testing to confirm status of hash checking
     pub(crate) invalid_hash: bool,
 }
 
@@ -33,7 +33,6 @@ impl Extractor {
             location: temp_dir().join(Path::new(ASSET_FILENAME)),
             #[cfg(windows)]
             location: temp_dir().join(Path::new(ASSET_FILENAME)),
-            checked: false,
             invalid_hash: false,
         }
     }
@@ -57,11 +56,11 @@ impl Extractor {
     }
 
     fn delivery(&mut self) -> Result<(), io::Error> {
-        if self.location.exists() && self.checked {
-            log::warn!("Extractor {:?} already exists", self.location);
-            return Ok(());
-        }
-        if self.location.exists() && !self.checked {
+        if self.location.exists() {
+            log::warn!(
+                "Extractor {:?} already exists. Checking checksum.",
+                self.location
+            );
             if !match checksum(&self.location) {
                 Ok(checksum) => checksum == ASSET_CHECKSUM,
                 Err(err) => {
@@ -75,14 +74,12 @@ impl Extractor {
             } {
                 remove_file(&self.location)?;
             } else {
-                self.checked = true;
                 return Ok(());
             }
         }
         let mut file = self.create_file()?;
         file.write_all(EXECUTOR_BIN)?;
         file.flush()?;
-        self.checked = true;
         log::debug!("File is written in: {:?}", self.location);
         Ok(())
     }
@@ -137,6 +134,24 @@ impl Extractor {
 impl Default for Extractor {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// Removes extractor file from OS temporary folder. `envvars` creates a small
+/// executable file in OS temporary folder. This application drops a list of
+/// available environment variables and does nothing else. As soon as the
+/// extractor has been created, `envvars` uses it. But it still can be safely
+/// removed for cleaning purposes for example before closing of an application.
+///
+/// If `envvars` doesn't detect an extractor, it will be created again.
+///
+/// Note, `envvars` doesn't remove an extractor application automatically.
+pub fn cleanup() -> Result<(), io::Error> {
+    let path = temp_dir().join(Path::new(ASSET_FILENAME));
+    if !path.exists() {
+        Ok(())
+    } else {
+        remove_file(&path)
     }
 }
 
@@ -199,13 +214,6 @@ mod tests {
             .expect("Data should be written into extractor");
         file.flush().expect("Data should be flushed into extractor");
         drop(file);
-        // Drop validation status to make extractor check itself again
-        if let Ok(mut extractor) = EXTRACTOR.lock() {
-            assert!(extractor.checked);
-            extractor.checked = false;
-        } else {
-            panic!("Fail to get access to extractor");
-        }
         // Extracting again
         extract().expect("Envvars should be extracted");
         // Extractor should detect changes on executable file with invalid hash and rewrite

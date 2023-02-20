@@ -21,6 +21,10 @@
 //! This application is used to "drop" list of environment variables into `stdout`
 //! of the parent process and does nothing else. As soon as `envvars` instance is
 //! dropped, the application would be removed from the disk.
+//!
+//! For security reasons `envvars` checks the checksum of the extractor each time
+//! before using it. If a checksum is invalid (the file was damaged/changed etc),
+//! `envars` will remove a corrupted file and create a new one.
 //!  
 //! ## Unix specific
 //! `envvars` reads `/etc/shells` and analyze each shell from a list
@@ -59,6 +63,7 @@ mod extractor;
 mod profiles;
 
 pub use error::Error;
+pub use extractor::cleanup;
 use extractor::Extractor;
 pub use profiles::{get as get_profiles, Profile};
 
