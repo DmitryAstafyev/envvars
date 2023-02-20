@@ -3,7 +3,13 @@ name = "envvars"
 version = "0.1.0"
 edition = "2021"
 authors = ["d.astafyev@outlook.com"]
+description = "Getting environment variables considering shell configuration"
+license = "Apache-2.0"
 build = "build.rs"
+keywords = ["envvar", "shell", "bash", "environment"]
+categories = ["config", "os"]
+repository = "https://github.com/DmitryAstafyev/envvars.git"
+homepage = "https://github.com/DmitryAstafyev/envvars"
 
 [lib]
 name = "envvars"
