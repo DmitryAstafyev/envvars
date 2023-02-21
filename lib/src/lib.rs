@@ -57,6 +57,7 @@
 #[macro_use]
 extern crate lazy_static;
 use std::{collections::HashMap, sync::Mutex};
+mod assets;
 mod checksum;
 mod error;
 mod extractor;

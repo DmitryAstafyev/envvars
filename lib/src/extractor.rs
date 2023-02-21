@@ -1,4 +1,4 @@
-use crate::{checksum::checksum, Error};
+use crate::{assets, checksum::checksum, Error};
 use std::{
     collections::HashMap,
     env::temp_dir,
@@ -12,13 +12,6 @@ use std::{
 
 #[cfg(not(windows))]
 use std::os::unix::fs::OpenOptionsExt;
-#[cfg(not(windows))]
-static EXECUTOR_BIN: &[u8] = include_bytes!("../extractor/target/release/extractor");
-#[cfg(windows)]
-static EXECUTOR_BIN: &[u8] = include_bytes!("../extractor/target/release/extractor.exe");
-
-static ASSET_CHECKSUM: &str = include_str!("../assets/checksum.asset");
-static ASSET_FILENAME: &str = include_str!("../assets/filename.asset");
 
 pub struct Extractor {
     location: PathBuf,
@@ -30,9 +23,9 @@ impl Extractor {
     pub fn new() -> Self {
         Extractor {
             #[cfg(not(windows))]
-            location: temp_dir().join(Path::new(ASSET_FILENAME)),
+            location: temp_dir().join(Path::new(assets::filename())),
             #[cfg(windows)]
-            location: temp_dir().join(Path::new(ASSET_FILENAME)),
+            location: temp_dir().join(Path::new(assets::filename())),
             invalid_hash: false,
         }
     }
@@ -62,7 +55,7 @@ impl Extractor {
                 self.location
             );
             if !match checksum(&self.location) {
-                Ok(checksum) => checksum == ASSET_CHECKSUM,
+                Ok(checksum) => checksum == assets::checksum(),
                 Err(err) => {
                     log::warn!(
                         "Fail to get checksum of extractor {:?}: {err}",
@@ -78,7 +71,7 @@ impl Extractor {
             }
         }
         let mut file = self.create_file()?;
-        file.write_all(EXECUTOR_BIN)?;
+        file.write_all(assets::bin())?;
         file.flush()?;
         log::debug!("File is written in: {:?}", self.location);
         Ok(())
@@ -147,7 +140,7 @@ impl Default for Extractor {
 ///
 /// Note, `envvars` doesn't remove an extractor application automatically.
 pub fn cleanup() -> Result<(), io::Error> {
-    let path = temp_dir().join(Path::new(ASSET_FILENAME));
+    let path = temp_dir().join(Path::new(assets::filename()));
     if !path.exists() {
         Ok(())
     } else {
@@ -201,7 +194,7 @@ mod tests {
         // Extracting
         extract().expect("Envvars should be extracted");
         // Remove extractor
-        let extractor_path = temp_dir().join(Path::new(ASSET_FILENAME));
+        let extractor_path = temp_dir().join(Path::new(assets::filename()));
         remove_file(&extractor_path).expect("Extractor should removed");
         // Extracting again
         extract().expect("Envvars should be extracted");

@@ -43,7 +43,7 @@ fn write_extractor_checksum(location: &Path) -> Result<(), io::Error> {
 fn main() -> Result<(), io::Error> {
     let manifest_dir =
         env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR should be present in EnvVars");
-    write_extractor_file_name(&Path::new(&manifest_dir).join(ASSET_FILENAME))?;
-    write_extractor_checksum(&Path::new(&manifest_dir).join(ASSET_CHECKSUM))?;
+    // write_extractor_file_name(&Path::new(&manifest_dir).join(ASSET_FILENAME))?;
+    // write_extractor_checksum(&Path::new(&manifest_dir).join(ASSET_CHECKSUM))?;
     Ok(())
 }

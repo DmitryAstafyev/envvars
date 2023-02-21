@@ -5,7 +5,7 @@ edition = "2021"
 authors = ["d.astafyev@outlook.com"]
 description = "Getting environment variables considering shell configuration"
 license = "Apache-2.0"
-build = "build.rs"
+build = "build/mod.rs"
 keywords = ["envvar", "shell", "bash", "environment"]
 categories = ["config", "os"]
 repository = "https://github.com/DmitryAstafyev/envvars.git"
@@ -26,6 +26,7 @@ blake3 = "1.3"
 [build-dependencies]
 blake3 = "1.3"
 uuid = { version = "1.3.0", features = ["v4"] }
+fs_extra = "1.3.0"
 
 [profile.release]
 strip = true 
