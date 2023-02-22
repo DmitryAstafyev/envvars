@@ -5,43 +5,40 @@ namespace :build do
     Shell.sh 'rustup default stable'
   end
 
-  desc 'Build extractor'
-  task :extractor do
-    Shell.chdir(Paths::EXTRACTOR) do
+  desc 'Build'
+  task :lib do
+    Shell.chdir(Paths::LIB) do
       Shell.sh 'cargo build --release'
-      Reporter.add(Jobs::Building, Owner::Extractor, 'built', '')
+      Reporter.add(Jobs::Building, Owner::Lib, 'built', '')
     end
   end
 
-  desc 'Build lib'
-  task :lib do
-    Shell.sh 'cargo build --release'
-    Reporter.add(Jobs::Building, Owner::Lib, 'built', '')
-  end
-
   desc 'build'
-  task envvars: ['build:rust', 'build:extractor', 'build:lib'] do
+  task envvars: ['build:rust', 'build:lib'] do
     Reporter.print
   end
 end
 
 namespace :test do
-  desc 'Build extractor'
-  task :extractor do
-    Shell.chdir(Paths::EXTRACTOR) do
+  desc 'Build'
+  task :lib do
+    Shell.chdir(Paths::LIB) do
       Shell.sh 'cargo test -- --nocapture'
-      Reporter.add(Jobs::Test, Owner::Extractor, 'tested', '')
+      Reporter.add(Jobs::Test, Owner::Lib, 'tested', '')
     end
   end
 
-  desc 'Build lib'
-  task :lib do
-    Shell.sh 'cargo test -- --nocapture'
-    Reporter.add(Jobs::Test, Owner::Lib, 'tested', '')
+  desc 'Cargo packing check'
+  task :packing do
+    Rake::Task['build:rust'].invoke
+    Shell.chdir(Paths::LIB) do
+      Shell.sh 'cargo publish --dry-run'
+      Reporter.add(Jobs::Test, Owner::Lib, 'cargo publich has been checked', '')
+    end
   end
 
   desc 'test'
-  task envvars: ['build:envvars', 'test:extractor', 'test:lib'] do
+  task envvars: ['build:envvars', 'test:lib', 'test:packing'] do
     Reporter.print
   end
 end
@@ -55,41 +52,28 @@ namespace :clippy do
   end
 
   desc 'Clippy extractor'
-  task :extractor do
-    Reporter.add(Jobs::Clippy, Owner::Extractor, 'checked', '')
-    Shell.chdir(Paths::EXTRACTOR) do
+  task :lib do
+    Shell.chdir(Paths::LIB) do
       Shell.sh Paths::CLIPPY_NIGHTLY
+      Reporter.add(Jobs::Clippy, Owner::Lib, 'checked', '')
     end
   end
 
-  desc 'Clippy lib'
-  task :lib do
-    Rake::Task['build:extractor'].invoke
-    Reporter.add(Jobs::Clippy, Owner::Lib, 'checked', '')
-    Shell.sh Paths::CLIPPY_NIGHTLY
-  end
-
   desc 'Clippy all'
-  task envvars: ['clippy:nightly', 'clippy:extractor', 'clippy:lib'] do
+  task envvars: ['clippy:nightly', 'clippy:lib'] do
     Reporter.print
   end
 end
 
 namespace :clean do
-  desc 'Clean extractor'
-  task :extractor do
-    Shell.rm_rf("#{Paths::EXTRACTOR}/target")
-    Reporter.add(Jobs::Clearing, Owner::Extractor, "removed: #{Paths::EXTRACTOR}/target", '')
-  end
-
   desc 'Clean lib'
   task :lib do
-    Shell.rm_rf('./target')
+    Shell.rm_rf("#{Paths::LIB}/target")
     Reporter.add(Jobs::Clearing, Owner::Lib, 'removed: ./target', '')
   end
 
   desc 'Clean all'
-  task envvars: ['clean:extractor', 'clean:lib'] do
+  task envvars: ['clean:lib'] do
     Reporter.print
   end
 end
