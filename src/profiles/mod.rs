@@ -1,4 +1,5 @@
 use crate::{Error, EXTRACTOR};
+use serde::Serialize;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -8,7 +9,7 @@ pub mod unix;
 pub mod windows;
 
 /// Definition of shell profile
-#[derive(Debug, Clone)]
+#[derive(Serialize, Debug, Clone)]
 pub struct Profile {
     /// Suggested name of shell. For unix based systems it will be name of executable file,
     /// like "bash", "fish" etc. For windows it will be names like "GitBash", "PowerShell"
@@ -74,7 +75,7 @@ impl Profile {
     /// } else {
     ///     Profile::new(&PathBuf::from_str("/bin/bash").unwrap(), vec!["-c"], None).unwrap()
     /// };
-    /// 
+    ///
     /// assert_eq!(profile.name, if cfg!(windows) {
     ///     "bash.exe"
     /// } else {
