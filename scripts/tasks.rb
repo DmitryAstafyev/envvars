@@ -7,10 +7,8 @@ namespace :build do
 
   desc 'Build'
   task :lib do
-    Shell.chdir(Paths::LIB) do
-      Shell.sh 'cargo build --release'
-      Reporter.add(Jobs::Building, Owner::Lib, 'built', '')
-    end
+    Shell.sh 'cargo build --release'
+    Reporter.add(Jobs::Building, Owner::Lib, 'built', '')
   end
 
   desc 'build'
@@ -22,19 +20,15 @@ end
 namespace :test do
   desc 'Build'
   task :lib do
-    Shell.chdir(Paths::LIB) do
-      Shell.sh 'cargo test -- --nocapture'
-      Reporter.add(Jobs::Test, Owner::Lib, 'tested', '')
-    end
+    Shell.sh 'cargo test -- --nocapture'
+    Reporter.add(Jobs::Test, Owner::Lib, 'tested', '')
   end
 
   desc 'Cargo packing check'
   task :packing do
     Rake::Task['build:rust'].invoke
-    Shell.chdir(Paths::LIB) do
-      Shell.sh 'cargo publish --dry-run'
-      Reporter.add(Jobs::Test, Owner::Lib, 'cargo publich has been checked', '')
-    end
+    Shell.sh 'cargo publish --dry-run'
+    Reporter.add(Jobs::Test, Owner::Lib, 'cargo publich has been checked', '')
   end
 
   desc 'test'
@@ -53,10 +47,8 @@ namespace :clippy do
 
   desc 'Clippy extractor'
   task :lib do
-    Shell.chdir(Paths::LIB) do
-      Shell.sh Paths::CLIPPY_NIGHTLY
-      Reporter.add(Jobs::Clippy, Owner::Lib, 'checked', '')
-    end
+    Shell.sh Paths::CLIPPY_NIGHTLY
+    Reporter.add(Jobs::Clippy, Owner::Lib, 'checked', '')
   end
 
   desc 'Clippy all'
@@ -68,7 +60,7 @@ end
 namespace :clean do
   desc 'Clean lib'
   task :lib do
-    Shell.rm_rf("#{Paths::LIB}/target")
+    Shell.rm_rf('./target')
     Reporter.add(Jobs::Clearing, Owner::Lib, 'removed: ./target', '')
   end
 
