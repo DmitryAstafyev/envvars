@@ -1,16 +1,17 @@
+#[macro_use]
+extern crate lazy_static;
+
 use std::io::Error;
 
+mod cleaner;
 mod extractor;
 mod injector;
 mod paths;
 
 fn main() -> Result<(), Error> {
-    println!(">>>>>>>>>>>>>>>>>>>>>> BUILDING");
     extractor::copy_sources()?;
     extractor::build()?;
     injector::inject()?;
-    // assets::write_extractor_file_name()?;
-    // assets::write_extractor_checksum()?;
-    println!(">>>>>>>>>>>>>>>>>>>>>> BUILT");
+    cleaner::clear()?;
     Ok(())
 }

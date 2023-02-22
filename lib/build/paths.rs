@@ -4,6 +4,12 @@ use std::{
     io::{Error, ErrorKind},
     path::{Path, PathBuf},
 };
+use uuid::Uuid;
+
+lazy_static! {
+    #[doc(hidden)]
+    pub static ref TEMP_DIR: String = Uuid::new_v4().to_string();
+}
 
 fn if_exist(path: PathBuf) -> Result<PathBuf, Error> {
     if !path.exists() {
@@ -31,7 +37,7 @@ pub fn extractor_src_dir() -> Result<PathBuf, Error> {
 }
 
 pub fn extractor_dest_dir() -> Result<PathBuf, Error> {
-    let path = env::temp_dir().join("__envvars_crate_build_folder__");
+    let path = env::temp_dir().join(TEMP_DIR.as_str());
     if !path.exists() {
         create_dir(&path)?;
     }
@@ -51,14 +57,6 @@ pub fn extractor_executable() -> Result<PathBuf, Error> {
             .join(executable_file_name()),
     )
 }
-
-// pub fn output_dir() -> Result<PathBuf, Error> {
-//     let path = extractor_dest_dir()?.join("output");
-//     if !path.exists() {
-//         create_dir(&path)?;
-//     }
-//     if_exist(path)
-// }
 
 pub fn executable_file_name() -> String {
     String::from(if cfg!(windows) {
