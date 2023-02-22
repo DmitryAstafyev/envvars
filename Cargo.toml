@@ -12,6 +12,7 @@ repository = "https://github.com/DmitryAstafyev/envvars.git"
 homepage = "https://github.com/DmitryAstafyev/envvars"
 exclude = [
     "scripts/*",
+    "rakefile.rb"
 ]
 
 [lib]
