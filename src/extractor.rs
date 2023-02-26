@@ -13,6 +13,12 @@ use std::{
 #[cfg(not(windows))]
 use std::os::unix::fs::OpenOptionsExt;
 
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
+
+#[cfg(windows)]
+const DETACHED_PROCESS: u32 = 0x00000008;
+
 pub struct Extractor {
     location: PathBuf,
     /// Field is used only for testing to confirm status of hash checking
@@ -22,9 +28,6 @@ pub struct Extractor {
 impl Extractor {
     pub fn new() -> Self {
         Extractor {
-            #[cfg(not(windows))]
-            location: temp_dir().join(Path::new(assets::filename())),
-            #[cfg(windows)]
             location: temp_dir().join(Path::new(assets::filename())),
             invalid_hash: false,
         }
@@ -89,6 +92,7 @@ impl Extractor {
                             .to_string()
                             .replace('\\', "\\\\"),
                     )
+                    .creation_flags(DETACHED_PROCESS)
                     .output()
             } else {
                 Command::new(&self.location).output()
