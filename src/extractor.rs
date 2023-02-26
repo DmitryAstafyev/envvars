@@ -16,9 +16,6 @@ use std::os::unix::fs::OpenOptionsExt;
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 
-#[cfg(windows)]
-const DETACHED_PROCESS: u32 = 0x00000008;
-
 pub struct Extractor {
     location: PathBuf,
     /// Field is used only for testing to confirm status of hash checking
@@ -80,37 +77,35 @@ impl Extractor {
         Ok(())
     }
 
+    #[cfg(not(windows))]
     fn output(&self, shell: Option<&PathBuf>, args: &[String]) -> Result<Output, io::Error> {
-        if cfg!(windows) {
-            if let Some(shell) = shell {
-                Command::new(shell)
-                    .args(args.iter())
-                    .arg(
-                        &self
-                            .location
-                            .to_string_lossy()
-                            .to_string()
-                            .replace('\\', "\\\\"),
-                    )
-                    .creation_flags(DETACHED_PROCESS)
-                    .output()
-            } else {
-                Command::new(&self.location).output()
-            }
-        } else if cfg!(unix) {
-            if let Some(shell) = shell {
-                Command::new(shell)
-                    .args(args.iter())
-                    .arg(&self.location)
-                    .output()
-            } else {
-                Command::new(&self.location).output()
-            }
+        if let Some(shell) = shell {
+            Command::new(shell)
+                .args(args.iter())
+                .arg(&self.location)
+                .output()
         } else {
-            Err(io::Error::new(
-                io::ErrorKind::Other,
-                "Current platform isn't supported",
-            ))
+            Command::new(&self.location).output()
+        }
+    }
+
+    #[cfg(windows)]
+    fn output(&self, shell: Option<&PathBuf>, args: &[String]) -> Result<Output, io::Error> {
+        if let Some(shell) = shell {
+            const DETACHED_PROCESS: u32 = 0x00000008;
+            Command::new(shell)
+                .args(args.iter())
+                .arg(
+                    &self
+                        .location
+                        .to_string_lossy()
+                        .to_string()
+                        .replace('\\', "\\\\"),
+                )
+                .creation_flags(DETACHED_PROCESS)
+                .output()
+        } else {
+            Command::new(&self.location).output()
         }
     }
 
