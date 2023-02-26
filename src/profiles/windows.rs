@@ -3,9 +3,9 @@ use home::home_dir;
 use std::{collections::HashMap, env, path::PathBuf, str::FromStr};
 
 const WINDIR: &str = "windir";
-const SYSTEM_ROOT: &str = "SystemRoot";
-const PROCESSOR_ARCHITEW6432: &str = "PROCESSOR_ARCHITEW6432";
-const HOMEDRIVE: &str = "HOMEDRIVE";
+const SYSTEM_ROOT: &str = "systemroot";
+const PROCESSOR_ARCHITEW6432: &str = "processor_architew6432";
+const HOMEDRIVE: &str = "homedrive";
 
 fn get_envvars() -> Result<HashMap<String, String>, Error> {
     let envvars = match EXTRACTOR
@@ -30,6 +30,14 @@ fn get_envvars() -> Result<HashMap<String, String>, Error> {
     })
 }
 
+fn keys_to_lower_case(map: &HashMap<String, String>) -> HashMap<String, String> {
+    let mut result: HashMap<String, String> = HashMap::new();
+    map.iter().for_each(|(k, v)| {
+        result.insert(k.to_lowercase(), v.clone());
+    });
+    result
+}
+
 fn get_path_buf(str_path: &str) -> Result<PathBuf, Error> {
     PathBuf::from_str(str_path).map_err(Error::Infallible)
 }
@@ -45,20 +53,21 @@ fn add_profile(list: &mut Vec<Profile>, name: &str, path: PathBuf, args: Vec<&st
 
 pub(crate) fn get() -> Result<Vec<Profile>, Error> {
     let envvars = get_envvars()?;
-    let windir = envvars
+    let envvars_lower_case = keys_to_lower_case(&get_envvars()?);
+    let windir = envvars_lower_case
         .get(WINDIR)
         .ok_or(Error::NotFoundEnvVar(WINDIR.to_string()))?;
-    let homedrive = envvars
+    let homedrive = envvars_lower_case
         .get(HOMEDRIVE)
         .ok_or(Error::NotFoundEnvVar(HOMEDRIVE.to_string()))?;
-    let system_32_path = if envvars.contains_key(PROCESSOR_ARCHITEW6432) {
+    let system_32_path = if envvars_lower_case.contains_key(PROCESSOR_ARCHITEW6432) {
         format!("{windir}\\Sysnative")
     } else {
         format!("{windir}\\System32")
     };
     let mut profiles: Vec<Profile> = vec![];
-    if let Some(sys_root) = envvars.get(SYSTEM_ROOT) {
-        let system_path = if envvars.contains_key(PROCESSOR_ARCHITEW6432) {
+    if let Some(sys_root) = envvars_lower_case.get(SYSTEM_ROOT) {
+        let system_path = if envvars_lower_case.contains_key(PROCESSOR_ARCHITEW6432) {
             format!("{sys_root}\\Sysnative")
         } else {
             format!("{sys_root}\\System32")
