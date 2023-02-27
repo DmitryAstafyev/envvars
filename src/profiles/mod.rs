@@ -2,6 +2,7 @@ use crate::{Error, EXTRACTOR};
 use serde::Serialize;
 use std::{
     collections::HashMap,
+    fs,
     path::{Path, PathBuf},
 };
 
@@ -21,6 +22,8 @@ pub struct Profile {
     /// by default `envvars = None`. To load data should be used method `load`, which will
     /// make attempt to detect environment variables.
     pub envvars: Option<HashMap<String, String>>,
+    /// true - if path to executable file of shell is symlink to another location.
+    pub symlink: bool,
     /// Private field to store arguments needed to execute shell in right way to grab list
     /// of environment variables
     args: Vec<String>,
@@ -39,6 +42,10 @@ impl Profile {
         if !path.exists() {
             return Err(Error::NotFound(shell.clone()));
         }
+        let symlink = fs::symlink_metadata(path)
+            .map_err(Error::Io)?
+            .file_type()
+            .is_symlink();
         let name = if let Some(name) = name {
             name.to_string()
         } else {
@@ -53,6 +60,7 @@ impl Profile {
             name,
             path: shell.clone(),
             envvars: None,
+            symlink,
             args: args
                 .into_iter()
                 .map(|s| s.to_owned())

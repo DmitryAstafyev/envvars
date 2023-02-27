@@ -179,14 +179,15 @@ mod tests {
                 failed.push((p.clone(), err));
             } else {
                 println!(
-                    "{}: {:?}; (detected variables: {})",
+                    "{}: {:?}; (detected variables: {}); symlink={}",
                     p.name,
                     p.path,
                     if let Some(envvars) = p.envvars.as_ref() {
                         envvars.len()
                     } else {
                         0
-                    }
+                    },
+                    p.symlink
                 );
             }
         });
