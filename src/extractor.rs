@@ -16,6 +16,16 @@ use std::os::unix::fs::OpenOptionsExt;
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 
+#[cfg(windows)]
+fn get_extractor_path() -> PathBuf {
+    temp_dir().join(Path::new(&format!("{}.exe", assets::filename())))
+}
+
+#[cfg(not(windows))]
+fn get_extractor_path() -> PathBuf {
+    temp_dir().join(Path::new(assets::filename()))
+}
+
 pub struct Extractor {
     location: PathBuf,
     /// Field is used only for testing to confirm status of hash checking
@@ -25,7 +35,7 @@ pub struct Extractor {
 impl Extractor {
     pub fn new() -> Self {
         Extractor {
-            location: temp_dir().join(Path::new(assets::filename())),
+            location: get_extractor_path(),
             invalid_hash: false,
         }
     }
@@ -92,7 +102,7 @@ impl Extractor {
     #[cfg(windows)]
     fn output(&self, shell: Option<&PathBuf>, args: &[String]) -> Result<Output, io::Error> {
         if let Some(shell) = shell {
-            const DETACHED_PROCESS: u32 = 0x00000008;
+            const CREATE_NO_WINDOW: u32 = 0x08000000;
             Command::new(shell)
                 .args(args.iter())
                 .arg(
@@ -102,7 +112,7 @@ impl Extractor {
                         .to_string()
                         .replace('\\', "\\\\"),
                 )
-                .creation_flags(DETACHED_PROCESS)
+                .creation_flags(CREATE_NO_WINDOW)
                 .output()
         } else {
             Command::new(&self.location).output()
@@ -118,8 +128,14 @@ impl Extractor {
         let output = self.output(shell, args).map_err(Error::Executing)?;
         let stdout = from_utf8(&output.stdout).map_err(Error::Decoding)?;
         let stderr = from_utf8(&output.stderr).map_err(Error::Decoding)?;
-        serde_json::from_str::<HashMap<String, String>>(stdout)
-            .map_err(|e| Error::Parsing(e, stdout.to_owned(), stderr.to_owned()))
+        serde_json::from_str::<HashMap<String, String>>(stdout).map_err(|e| {
+            Error::Parsing(
+                e,
+                output.status.code(),
+                stdout.to_owned(),
+                stderr.to_owned(),
+            )
+        })
     }
 }
 
@@ -139,7 +155,7 @@ impl Default for Extractor {
 ///
 /// Note, `envvars` doesn't remove an extractor application automatically.
 pub fn cleanup() -> Result<(), io::Error> {
-    let path = temp_dir().join(Path::new(assets::filename()));
+    let path = get_extractor_path();
     if !path.exists() {
         Ok(())
     } else {
@@ -179,8 +195,10 @@ mod tests {
         println!("Found shells with failed detection of envvars:");
         println!("{}", "=".repeat(50));
         failed.iter().for_each(|(p, err)| match err {
-            Error::Parsing(_err, _stdout, stderr) => {
-                println!("{}: {:?}; error:\n{stderr}", p.name, p.path,);
+            Error::Parsing(_err, code, stdout, stderr) => {
+                println!("{}: {:?}; code: {code:?}", p.name, p.path,);
+                println!("{}: {:?}; stdout:\n{stdout}", p.name, p.path,);
+                println!("{}: {:?}; stderr:\n{stderr}", p.name, p.path,);
             }
             _ => {
                 println!("{}: {:?}; fail to get envvars: {err}", p.name, p.path,);
@@ -193,7 +211,7 @@ mod tests {
         // Extracting
         extract().expect("Envvars should be extracted");
         // Remove extractor
-        let extractor_path = temp_dir().join(Path::new(assets::filename()));
+        let extractor_path = get_extractor_path();
         remove_file(&extractor_path).expect("Extractor should removed");
         // Extracting again
         extract().expect("Envvars should be extracted");

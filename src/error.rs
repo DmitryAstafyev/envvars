@@ -12,7 +12,7 @@ pub enum Error {
     /// Happens if stdout has content, which isn't possible to parse as json
     /// string.
     #[error("Parsing error: {0:?}")]
-    Parsing(serde_json::Error, String, String),
+    Parsing(serde_json::Error, Option<i32>, String, String),
     /// Any error during attempt to execute extractor as target shell command
     #[error("Fail to execute extractor: {0:?}")]
     Executing(io::Error),

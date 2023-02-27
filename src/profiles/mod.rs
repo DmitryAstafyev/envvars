@@ -71,7 +71,7 @@ impl Profile {
     /// use envvars::Profile;
     ///
     /// let mut profile: Profile = if cfg!(windows) {
-    ///     Profile::new(&PathBuf::from_str("C:\\msys64\\usr\\bin\\bash.exe").unwrap(), vec!["-c"], None).unwrap()
+    ///     Profile::new(&PathBuf::from_str("C:\\Program Files\\Git\\bin\\bash.exe").unwrap(), vec!["-c"], None).unwrap()
     /// } else {
     ///     Profile::new(&PathBuf::from_str("/bin/bash").unwrap(), vec!["-c"], None).unwrap()
     /// };

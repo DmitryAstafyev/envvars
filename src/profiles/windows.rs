@@ -1,6 +1,11 @@
 use crate::{profiles::Profile, Error, EXTRACTOR};
 use home::home_dir;
-use std::{collections::HashMap, env, path::PathBuf, str::FromStr};
+use std::{
+    collections::HashMap,
+    env,
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
 const WINDIR: &str = "windir";
 const SYSTEM_ROOT: &str = "systemroot";
@@ -61,29 +66,29 @@ pub(crate) fn get() -> Result<Vec<Profile>, Error> {
         .get(HOMEDRIVE)
         .ok_or(Error::NotFoundEnvVar(HOMEDRIVE.to_string()))?;
     let system_32_path = if envvars_lower_case.contains_key(PROCESSOR_ARCHITEW6432) {
-        format!("{windir}\\Sysnative")
+        Path::new(windir).join("Sysnative")
     } else {
-        format!("{windir}\\System32")
+        Path::new(windir).join("System32")
     };
     let mut profiles: Vec<Profile> = vec![];
     if let Some(sys_root) = envvars_lower_case.get(SYSTEM_ROOT) {
         let system_path = if envvars_lower_case.contains_key(PROCESSOR_ARCHITEW6432) {
-            format!("{sys_root}\\Sysnative")
+            Path::new(sys_root).join("Sysnative")
         } else {
-            format!("{sys_root}\\System32")
+            Path::new(sys_root).join("System32")
         };
         // WSL (build > 16299)
         add_profile(
             &mut profiles,
             "WSL",
-            get_path_buf(&format!("{system_path}\\wsl.exe"))?,
+            system_path.join("wsl.exe"),
             vec!["-c"],
         );
         // WSL Bash (build < 16299)
         add_profile(
             &mut profiles,
             "WSL (bash)",
-            get_path_buf(&format!("{system_path}\\bash.exe"))?,
+            system_path.join("bash.exe"),
             vec!["-c"],
         );
     }
@@ -91,48 +96,56 @@ pub(crate) fn get() -> Result<Vec<Profile>, Error> {
     add_profile(
         &mut profiles,
         "Windows PowerShell",
-        get_path_buf(&format!(
-            "{system_32_path}\\WindowsPowerShell\\v1.0\\powershell.exe"
-        ))?,
-        vec![],
+        system_32_path
+            .join("WindowsPowerShell")
+            .join("v1.0")
+            .join("powershell.exe"),
+        vec!["-c"],
     );
     if let Some(home) = home_dir() {
         // .NET Core PowerShell Global Tool
         add_profile(
             &mut profiles,
             ".NET Core PowerShell Global Tool",
-            get_path_buf(&format!(
-                "{}\\.dotnet\\tools\\pwsh.exe",
-                home.to_string_lossy()
-            ))?,
-            vec![],
+            home.join(".dotnet").join("tools").join("pwsh.exe"),
+            vec!["-c"],
         );
     }
     // Command Prompt
     add_profile(
         &mut profiles,
         "Command Prompt",
-        get_path_buf(&format!("{system_32_path}\\cmd.exe"))?,
+        system_32_path.join("cmd.exe"),
         vec![],
     );
     // Cygwin
     add_profile(
         &mut profiles,
         "Cygwin x64",
-        get_path_buf(&format!("{homedrive}\\cygwin64\\bin\\bash.exe"))?,
+        get_path_buf(homedrive)?
+            .join("cygwin64")
+            .join("bin")
+            .join("bash.exe"),
         vec!["--login", "-c"],
     );
     add_profile(
         &mut profiles,
         "Cygwin",
-        get_path_buf(&format!("{homedrive}\\cygwin\\bin\\bash.exe"))?,
+        get_path_buf(homedrive)?
+            .join("cygwin")
+            .join("bin")
+            .join("bash.exe"),
         vec!["--login", "-c"],
     );
     // bash (MSYS2)
     add_profile(
         &mut profiles,
         "bash (MSYS2)",
-        get_path_buf(&format!("{homedrive}\\msys64\\usr\\bin\\bash.exe"))?,
+        get_path_buf(homedrive)?
+            .join("msys64")
+            .join("usr")
+            .join("bin")
+            .join("bash.exe"),
         vec!["--login", "-i", "-c"],
     );
     // GitBash
@@ -141,13 +154,17 @@ pub(crate) fn get() -> Result<Vec<Profile>, Error> {
             add_profile(
                 &mut profiles,
                 "GitBash",
-                get_path_buf(&format!("{v}\\Git\\bin\\bash.exe"))?,
+                get_path_buf(v)?.join("Git").join("bin").join("bash.exe"),
                 vec!["--login", "-i", "-c"],
             );
             add_profile(
                 &mut profiles,
                 "GitBash",
-                get_path_buf(&format!("{v}\\Git\\usr\\bin\\bash.exe"))?,
+                get_path_buf(v)?
+                    .join("Git")
+                    .join("usr")
+                    .join("bin")
+                    .join("bash.exe"),
                 vec!["--login", "-i", "-c"],
             );
         }
@@ -156,7 +173,11 @@ pub(crate) fn get() -> Result<Vec<Profile>, Error> {
         add_profile(
             &mut profiles,
             "GitBash",
-            get_path_buf(&format!("{v}\\Programs\\Git\\bin\\bash.exe"))?,
+            get_path_buf(v)?
+                .join("Programs")
+                .join("Git")
+                .join("bin")
+                .join("bash.exe"),
             vec!["--login", "-i", "-c"],
         );
     }
@@ -164,9 +185,13 @@ pub(crate) fn get() -> Result<Vec<Profile>, Error> {
         add_profile(
             &mut profiles,
             "GitBash",
-            get_path_buf(&format!(
-                "{v}\\scoop\\apps\\git-with-openssh\\current\\bin\\bash.exe"
-            ))?,
+            get_path_buf(v)?
+                .join("scoop")
+                .join("apps")
+                .join("git-with-openssh")
+                .join("current")
+                .join("bin")
+                .join("bash.exe"),
             vec!["--login", "-i", "-c"],
         );
     }
